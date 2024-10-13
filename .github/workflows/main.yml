@@ -19,7 +19,7 @@ jobs:  # 定义作业
         include:                # 包含的特定配置
           - target_arch: amd64  # 添加 amd64 架构
             target: amd64       # 指定目标
-            os: ubuntu-latest   # 在 Ubuntu-latest 上的配置
+            os: ubuntu-22.04    # 在 Ubuntu 上的配置
             compiler: clang-14  # 使用的编译器
             cross-bindir: /usr/lib/llvm-14/bin          # 指定交叉编译器的路径
             pkgs: bmake libarchive-dev clang-14 lld-14  # 要安装的包
@@ -28,7 +28,7 @@ jobs:  # 定义作业
       - uses: actions/checkout@v4  # 检出代码仓库的内容
         with: 
           repository: 'freebsd/freebsd-src'
-          ref: 'main'
+          ref: 'release/14.1.0'
 
       - name: install packages (Ubuntu)  # 安装 Ubuntu 上的包
         if: runner.os == 'Linux'  # 仅在 Linux 上执行
