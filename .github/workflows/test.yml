@@ -37,6 +37,6 @@ jobs:  # 定义作业
           echo "EXTRA_BUILD_ARGS=--cross-bindir=${{ matrix.cross-bindir }}" # 将交叉编译器路径添加到环境变量
           echo "MAKEOBJDIRPREFIX=${PWD%/*}/build" # 设置对象文件目录
           echo "NPROC=`getconf _NPROCESSORS_ONLN 2>/dev/null || getconf NPROCESSORS_ONLN 2>/dev/null || echo 1`"  # 获取可用的处理器数量
-          ls -l
+          ls -l ../
 
         
