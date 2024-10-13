@@ -1,0 +1,58 @@
+name: freebsd-kernel-builder  # 工作流名称
+
+on:
+  push:  # 当代码推送到main分支时触发
+    branches: [ main ]
+  workflow_dispatch:  # 允许手动触发工作流
+
+permissions:
+  contents: read  # 设置权限，仅允许读取内容
+
+jobs:  # 定义作业
+  build:  # 作业名称
+    name: ${{ matrix.target_arch }} ${{ matrix.os }} (${{ matrix.compiler }})  # 作业的显示名称，包含目标架构、操作系统和编译器信息
+    runs-on: ${{ matrix.os }}  # 在矩阵定义的操作系统上运行
+    strategy:  # 策略定义
+      fail-fast: true  # 失败时停止所有作业
+      matrix:  # 矩阵配置
+        target_arch: [ amd64 ]  # 目标架构列表
+        os: [ ubuntu-latest ]  # 操作系统列表
+        include:  # 包含的特定配置
+          - target_arch: amd64  # 添加 amd64 架构
+            target: amd64  # 指定目标
+          - os: ubuntu-latest  # 在 Ubuntu-latest 上的配置
+            compiler: clang-14  # 使用的编译器
+            cross-bindir: /usr/lib/llvm-14/bin  # 指定交叉编译器的路径
+            pkgs: bmake libarchive-dev clang-14 lld-14  # 要安装的包
+
+    steps:  # 定义步骤
+      - uses: actions/checkout@v4  # 检出代码仓库的内容
+        with: 
+	      repository: 'https://github.com/freebsd/freebsd-src'
+	      ref: 'main'
+
+      - name: install packages (Ubuntu)  # 安装 Ubuntu 上的包
+        if: runner.os == 'Linux'  # 仅在 Linux 上执行
+        run: |  # 运行以下命令
+          sudo apt-get update --quiet || true  # 更新包列表，忽略错误
+          sudo apt-get -yq --no-install-suggests --no-install-recommends install ${{ matrix.pkgs }}  # 安装指定的包
+
+      - name: create environment  # 创建环境
+        run: |  # 运行以下命令
+          echo "GITHUB_WORKSPACE = $GITHUB_WORKSPACE"  # 输出 GitHub 工作空间路径
+          if [ -n "${{ matrix.cross-bindir }}" ]; then  # 如果定义了交叉编译器路径
+            echo "EXTRA_BUILD_ARGS=--cross-bindir=${{ matrix.cross-bindir }}" >> $GITHUB_ENV  # 将交叉编译器路径添加到环境变量
+          fi
+          mkdir -p ../build  # 创建构建目录
+          echo "MAKEOBJDIRPREFIX=${PWD%/*}/build" >> $GITHUB_ENV  # 设置对象文件目录
+          # 获取可用的处理器数量
+          echo "NPROC=`getconf _NPROCESSORS_ONLN 2>/dev/null || getconf NPROCESSORS_ONLN 2>/dev/null || echo 1`" >> $GITHUB_ENV
+
+      - name: bootstrap bmake  # 引导 bmake
+        run: ./tools/build/make.py --debug $EXTRA_BUILD_ARGS TARGET=${{ matrix.target }} TARGET_ARCH=${{ matrix.target_arch }} -n  # 运行构建脚本
+
+      - name: make kernel-toolchain  # 构建内核工具链
+        run: ./tools/build/make.py --debug $EXTRA_BUILD_ARGS TARGET=${{ matrix.target }} TARGET_ARCH=${{ matrix.target_arch }} kernel-toolchain -s -j$NPROC -DWITH_DISK_IMAGE_TOOLS_BOOTSTRAP  # 运行构建脚本
+
+      - name: make buildkernel  # 构建内核
+        run: ./tools/build/make.py --debug $EXTRA_BUILD_ARGS TARGET=${{ matrix.target }} TARGET_ARCH=${{ matrix.target_arch }} KERNCONF=GENERIC NO_MODULES=yes buildkernel -s -j$NPROC $EXTRA_MAKE_ARGS  # 运行构建脚本
