@@ -51,12 +51,13 @@ jobs:  # 定义作业
           
       - name: test
         run: |
-          echo "echo GITHUB_WORKSPACE"
+          echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
           ls -l $GITHUB_WORKSPACE
-          echo "echo MAKEOBJDIRPREFIX"
-          ls -l $MAKEOBJDIRPREFIX
           echo "echo pwd"
           pwd
+          echo "MAKEOBJDIRPREFIX=$MAKEOBJDIRPREFIX"
+          ls -l $MAKEOBJDIRPREFIX
+          
 
       - name: bootstrap bmake  # 引导 bmake
         run: ./tools/build/make.py --debug $EXTRA_BUILD_ARGS TARGET=${{ matrix.target }} TARGET_ARCH=${{ matrix.target_arch }} -n  # 运行构建脚本
